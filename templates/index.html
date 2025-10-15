@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reloj Analógico Circular</title>
+    <style>
+        :root {
+            --accent: #00ffcc;
+            --hourColor: #ff0066;
+            --minuteColor: #00ccff;
+            --secondColor: #00ff99;
+            --bgStart: #222;
+            --bgEnd: #000;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .clock {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border: 8px solid var(--accent);
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--bgStart) 60%, var(--bgEnd));
+            box-shadow: 0 0 20px var(--accent);
+        }
+        /* Marcas del dial (minutos y horas) */
+        .tick {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 10px;
+            background-color: #888;
+            transform-origin: bottom;
+            box-shadow: 0 0 6px rgba(0, 255, 204, 0.4);
+        }
+
+        .tick.hour {
+            width: 3px;
+            height: 16px;
+            background-color: var(--accent);
+        }
+
+        /* Números del reloj */
+        .number {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #ffffff;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--accent);
+            transform: translate(-50%, -50%);
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            transform: translateX(-50%) rotate(0deg);
+            background-color: white;
+            border-radius: 5px;
+        }
+
+        .hour {
+            width: 6px;
+            height: 70px;
+            background-color: var(--hourColor);
+        }
+
+        .minute {
+            width: 4px;
+            height: 100px;
+            background-color: var(--minuteColor);
+        }
+
+        .second {
+            width: 2px;
+            height: 120px;
+            background-color: var(--secondColor);
+        }
+
+        .center {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .controls, .timezone-controls, .style-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .timezone-controls { margin-top: 40px; }
+
+        .toggle-btn, .select {
+            padding: 8px 14px;
+            border: 2px solid var(--accent);
+            background: #111;
+            color: var(--accent);
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+        }
+
+        .toggle-btn:hover, .select:hover {
+            background: #0a0a0a;
+        }
+
+        .digital-time {
+            font-size: 18px;
+            letter-spacing: 1px;
+            color: var(--accent);
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+        }
+
+        /* Panel flotante de temas */
+        .theme-controls {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(17, 17, 17, 0.9);
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 10px 12px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+        }
+        .theme-title { font-size: 14px; color: #ddd; }
+    </style>
+</head>
+<body>
+    <div class="clock">
+        <div class="hand hour" id="hour"></div>
+        <div class="hand minute" id="minute"></div>
+        <div class="hand second" id="second"></div>
+        <div class="center"></div>
+    </div>
+
+    <div class="theme-controls">
+        <div class="theme-title">Tema del reloj</div>
+        <select id="theme-select" class="select">
+            <option value="cian">Neón Cian</option>
+            <option value="verde">Verde</option>
+            <option value="azul">Azul</option>
+            <option value="magenta">Magenta</option>
+            <option value="naranja">Naranja</option>
+            <option value="morado">Morado</option>
+        </select>
+    </div>
+
+    <div class="timezone-controls">
+        <div id="zone-label" class="digital-time">Zona: Sistema (local)</div>
+        <select id="zone-select" class="select">
+            <option value="0">Sistema (local)</option>
+            <option value="1">Bogotá (CO)</option>
+            <option value="2">Nueva York (US)</option>
+            <option value="3">Madrid (ES)</option>
+            <option value="4">Tokio (JP)</option>
+        </select>
+        <div id="digital-time" class="digital-time">--:--:--</div>
+    </div>
+
+    <script>
+        // Lista corta de zonas horarias (alternadas con un botón)
+        const zones = [
+            { label: 'Sistema (local)', tz: null },
+            { label: 'Bogotá (CO)', tz: 'America/Bogota' },
+            { label: 'Nueva York (US)', tz: 'America/New_York' },
+            { label: 'Madrid (ES)', tz: 'Europe/Madrid' },
+            { label: 'Tokio (JP)', tz: 'Asia/Tokyo' }
+        ];
+        let zoneIndex = 0;
+
+        // Crear números y marcas del dial
+        function createDial() {
+            const clock = document.querySelector('.clock');
+            const size = 300; // debe coincidir con .clock
+            const center = size / 2;
+
+            // Marcas de minutos (0..59), las de cada 5 son de hora
+            for (let i = 0; i < 60; i++) {
+                const angle = i * 6; // grados
+                const tick = document.createElement('div');
+                tick.className = 'tick' + (i % 5 === 0 ? ' hour' : '');
+                const radius = 140; // posición radial de la marca
+                tick.style.transform = `translate(-50%, -50%) rotate(${angle}deg) translateY(-${radius}px)`;
+                clock.appendChild(tick);
+            }
+
+            // Números 1..12 alrededor
+            const numberRadius = 115;
+            for (let h = 1; h <= 12; h++) {
+                const angleDeg = h * 30 - 90; // 12 arriba
+                const angleRad = angleDeg * Math.PI / 180;
+                const x = center + numberRadius * Math.cos(angleRad);
+                const y = center + numberRadius * Math.sin(angleRad);
+                const num = document.createElement('div');
+                num.className = 'number';
+                num.textContent = h;
+                num.style.left = `${x}px`;
+                num.style.top = `${y}px`;
+                clock.appendChild(num);
+            }
+        }
+
+        function format2(n) { return n.toString().padStart(2, '0'); }
+
+        function getTimeForZone(zoneObj) {
+            const now = new Date();
+            if (!zoneObj.tz) {
+                return { hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds() };
+            }
+            const parts = new Intl.DateTimeFormat('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: zoneObj.tz
+            }).formatToParts(now);
+            const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+            const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
+            const second = parseInt(parts.find(p => p.type === 'second').value, 10);
+            return { hour, minute, second };
+        }
+
+        function updateZoneLabel() {
+            const zoneObj = zones[zoneIndex];
+            document.getElementById('zone-label').textContent = `Zona: ${zoneObj.label}`;
+            const select = document.getElementById('zone-select');
+            if (select.value !== String(zoneIndex)) select.value = String(zoneIndex);
+        }
+
+        async function updateClock() {
+            try {
+                const { hour, minute, second } = getTimeForZone(zones[zoneIndex]);
+
+                // Calculamos los grados para cada manecilla
+                const hourDeg = (hour % 12) * 30 + (minute / 2);
+                const minuteDeg = (minute * 6);
+                const secondDeg = (second * 6);
+
+                document.getElementById("hour").style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+                document.getElementById("minute").style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
+                document.getElementById("second").style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
+
+                // Hora digital exacta (solo tiempo)
+                document.getElementById('digital-time').textContent = `${format2(hour)}:${format2(minute)}:${format2(second)}`;
+
+            } catch (error) {
+                console.error("Error al actualizar el reloj:", error);
+            }
+        }
+
+        // Selección de zona horaria
+        const zoneSelect = document.getElementById('zone-select');
+        zoneSelect.addEventListener('change', (e) => {
+            zoneIndex = parseInt(e.target.value, 10);
+            updateZoneLabel();
+            updateClock();
+        });
+
+        // Temas predefinidos
+        const themes = {
+            cian: {
+                accent: '#00ffcc', hourColor: '#ff0066', minuteColor: '#00ccff', secondColor: '#00ff99',
+                bgStart: '#222', bgEnd: '#000'
+            },
+            verde: {
+                accent: '#00ff88', hourColor: '#00cc66', minuteColor: '#00aa55', secondColor: '#00ff99',
+                bgStart: '#1a2d1a', bgEnd: '#0a140a'
+            },
+            azul: {
+                accent: '#66ccff', hourColor: '#3399ff', minuteColor: '#66ccff', secondColor: '#99ddff',
+                bgStart: '#1a2433', bgEnd: '#0a0f14'
+            },
+            magenta: {
+                accent: '#ff00cc', hourColor: '#ff3399', minuteColor: '#ff66cc', secondColor: '#ff99dd',
+                bgStart: '#2a1424', bgEnd: '#10060e'
+            },
+            naranja: {
+                accent: '#ff9900', hourColor: '#ff6600', minuteColor: '#ff9900', secondColor: '#ffcc66',
+                bgStart: '#2a1f14', bgEnd: '#120a06'
+            },
+            morado: {
+                accent: '#bb66ff', hourColor: '#9955ff', minuteColor: '#bb66ff', secondColor: '#dd99ff',
+                bgStart: '#241a33', bgEnd: '#0e0a14'
+            }
+        };
+
+        function applyTheme(key) {
+            const t = themes[key] || themes.cian;
+            const root = document.documentElement.style;
+            root.setProperty('--accent', t.accent);
+            root.setProperty('--hourColor', t.hourColor);
+            root.setProperty('--minuteColor', t.minuteColor);
+            root.setProperty('--secondColor', t.secondColor);
+            root.setProperty('--bgStart', t.bgStart);
+            root.setProperty('--bgEnd', t.bgEnd);
+        }
+
+        const themeSelect = document.getElementById('theme-select');
+        themeSelect.addEventListener('change', (e) => {
+            applyTheme(e.target.value);
+        });
+        // Aplicar tema por defecto
+        applyTheme('cian');
+
+        // Construimos el dial y actualizamos cada segundo
+        createDial();
+        updateZoneLabel();
+        // Actualizamos cada segundo
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
