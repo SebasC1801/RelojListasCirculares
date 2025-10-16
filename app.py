@@ -1,4 +1,5 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify, send_file
+import os
 from ActividadListasCircularesDobles import ClockStructure
 import threading
 import time
@@ -16,7 +17,8 @@ thread.start()
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Servir el index.html que está en la raíz del proyecto
+    return send_file(os.path.join(app.root_path, 'index.html'))
 
 @app.route("/time")
 def get_time():

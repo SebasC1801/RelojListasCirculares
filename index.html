@@ -153,17 +153,22 @@
         }
         .theme-title { font-size: 14px; color: #ddd; }
 
-        /* Animación de entrada */
+        /* Animación de entrada más notoria */
         @keyframes clockIntro {
-            0% { opacity: 0; transform: scale(0.94); }
-            60% { opacity: 1; transform: scale(1.02); }
+            0% { opacity: 0; transform: scale(0.90); }
+            60% { opacity: 1; transform: scale(1.06); }
             100% { opacity: 1; transform: scale(1); }
         }
+        @keyframes glowPulse {
+            0%   { box-shadow: 0 0 0px var(--accent); }
+            50%  { box-shadow: 0 0 36px var(--accent); }
+            100% { box-shadow: 0 0 20px var(--accent); }
+        }
         .clock-intro {
-            animation: clockIntro 800ms ease-out both;
+            animation: clockIntro 1000ms ease-out both, glowPulse 1400ms ease-out both;
         }
         .hand.animate-in {
-            transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 1000ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
     </style>
 </head>
@@ -215,14 +220,19 @@
             const clock = document.querySelector('.clock');
             const size = 300; // debe coincidir con .clock
             const center = size / 2;
+            const borderWidth = 8; // coincide con .clock { border }
+            const padding = 2;     // pequeño margen para que no toque el borde
+            const innerRadius = center - borderWidth - padding; // radio interno disponible
 
             // Marcas de minutos (0..59), las de cada 5 son de hora
             for (let i = 0; i < 60; i++) {
                 const angle = i * 6; // grados
+                const isHour = (i % 5 === 0);
+                const tickHeight = isHour ? 16 : 10;
+                const baseRadius = innerRadius - tickHeight; // coloca base para que la punta quede dentro
                 const tick = document.createElement('div');
-                tick.className = 'tick' + (i % 5 === 0 ? ' hour' : '');
-                const radius = 140; // posición radial de la marca
-                tick.style.transform = `translate(-50%, -50%) rotate(${angle}deg) translateY(-${radius}px)`;
+                tick.className = 'tick' + (isHour ? ' hour' : '');
+                tick.style.transform = `translate(-50%, -50%) rotate(${angle}deg) translateY(-${baseRadius}px)`;
                 clock.appendChild(tick);
             }
 
@@ -357,28 +367,37 @@
             mEl.classList.add('animate-in');
             sEl.classList.add('animate-in');
 
-            // Tras un pequeño delay, llevamos a la hora real con transición
+            // Barrido del segundero para dar efecto vistoso
+            setTimeout(() => {
+                sEl.style.transition = 'transform 1100ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+                sEl.style.transform = 'translateX(-50%) rotate(360deg)';
+            }, 80);
+
+            // Llevar hora y minuto a la posición real con transición
             setTimeout(() => {
                 const { hour, minute, second } = getTimeForZone(zones[zoneIndex]);
                 const hourDeg = (hour % 12) * 30 + (minute / 2);
                 const minuteDeg = (minute * 6);
-                const secondDeg = (second * 6);
                 hEl.style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
                 mEl.style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
-                sEl.style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
-                // Hora digital
                 document.getElementById('digital-time').textContent = `${format2(hour)}:${format2(minute)}:${format2(second)}`;
-            }, 60);
+            }, 180);
 
-            // Al terminar la transición, quitamos la clase y comenzamos actualización normal
+            // Al terminar el barrido, fijamos el segundero y empezamos actualización normal
             setTimeout(() => {
+                const { hour, minute, second } = getTimeForZone(zones[zoneIndex]);
+                const secondDeg = (second * 6);
+                sEl.style.transition = 'transform 300ms ease-out';
+                sEl.style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
+
                 hEl.classList.remove('animate-in');
                 mEl.classList.remove('animate-in');
                 sEl.classList.remove('animate-in');
+
                 // Actualizamos cada segundo
                 setInterval(updateClock, 1000);
                 updateClock();
-            }, 1100);
+            }, 1300);
         }
 
         playIntroAnimation();
