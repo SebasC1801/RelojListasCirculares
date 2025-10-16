@@ -201,6 +201,11 @@
             <option value="3">Madrid (ES)</option>
             <option value="4">Tokio (JP)</option>
         </select>
+        <div id="format-label" class="digital-time">Formato: 24 horas</div>
+        <select id="format-select" class="select">
+            <option value="24" selected>24 horas</option>
+            <option value="12">12 horas (AM/PM)</option>
+        </select>
         <div id="digital-time" class="digital-time">--:--:--</div>
     </div>
 
@@ -254,6 +259,16 @@
         }
 
         function format2(n) { return n.toString().padStart(2, '0'); }
+        let is12h = false;
+
+        function formatDigital(hour, minute, second) {
+            if (is12h) {
+                const suffix = hour >= 12 ? 'PM' : 'AM';
+                const h12 = (hour % 12 === 0) ? 12 : (hour % 12);
+                return `${format2(h12)}:${format2(minute)}:${format2(second)} ${suffix}`;
+            }
+            return `${format2(hour)}:${format2(minute)}:${format2(second)}`;
+        }
 
         function getTimeForZone(zoneObj) {
             const now = new Date();
@@ -289,7 +304,7 @@
                 document.getElementById("second").style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
 
                 // Hora digital exacta (solo tiempo)
-                document.getElementById('digital-time').textContent = `${format2(hour)}:${format2(minute)}:${format2(second)}`;
+                document.getElementById('digital-time').textContent = formatDigital(hour, minute, second);
 
             } catch (error) {
                 console.error("Error al actualizar el reloj:", error);
@@ -301,6 +316,14 @@
         zoneSelect.addEventListener('change', (e) => {
             zoneIndex = parseInt(e.target.value, 10);
             updateZoneLabel();
+            updateClock();
+        });
+
+        // Selección de formato 12/24 horas
+        const formatSelect = document.getElementById('format-select');
+        formatSelect.addEventListener('change', (e) => {
+            is12h = (e.target.value === '12');
+            document.getElementById('format-label').textContent = is12h ? 'Formato: 12 horas (AM/PM)' : 'Formato: 24 horas';
             updateClock();
         });
 
@@ -380,7 +403,7 @@
                 const minuteDeg = (minute * 6);
                 hEl.style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
                 mEl.style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
-                document.getElementById('digital-time').textContent = `${format2(hour)}:${format2(minute)}:${format2(second)}`;
+                document.getElementById('digital-time').textContent = formatDigital(hour, minute, second);
             }, 180);
 
             // Al terminar el barrido, fijamos el segundero y empezamos actualización normal
