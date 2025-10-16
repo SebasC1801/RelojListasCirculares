@@ -205,13 +205,14 @@
     </div>
 
     <script>
-        // Lista corta de zonas horarias (alternadas con un botón)
+        // Ciudades con diferencia fija respecto a Bogotá (UTC-5)
+        // Nota: sin horario de verano. NYC = 0, Madrid = +6, Tokio = +14.
         const zones = [
-            { label: 'Sistema (local)', tz: null },
-            { label: 'Bogotá (CO)', tz: 'America/Bogota' },
-            { label: 'Nueva York (US)', tz: 'America/New_York' },
-            { label: 'Madrid (ES)', tz: 'Europe/Madrid' },
-            { label: 'Tokio (JP)', tz: 'Asia/Tokyo' }
+            { label: 'Sistema (local)', offsetHours: 0 },
+            { label: 'Bogotá (CO)', offsetHours: 0 },
+            { label: 'Nueva York (US)', offsetHours: 0 },
+            { label: 'Madrid (ES)', offsetHours: 6 },
+            { label: 'Tokio (JP)', offsetHours: 14 }
         ];
         let zoneIndex = 0;
 
@@ -256,15 +257,14 @@
 
         function getTimeForZone(zoneObj) {
             const now = new Date();
-            if (!zoneObj.tz) {
-                return { hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds() };
-            }
-            const parts = new Intl.DateTimeFormat('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: zoneObj.tz
-            }).formatToParts(now);
-            const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
-            const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
-            const second = parseInt(parts.find(p => p.type === 'second').value, 10);
+            const baseHour = now.getHours();
+            const minute = now.getMinutes();
+            const second = now.getSeconds();
+            const offset = zoneObj.offsetHours || 0;
+            let hour = baseHour + offset;
+            // Normalizamos al rango 0..23 para evitar desbordes
+            if (hour >= 24) hour -= 24;
+            if (hour < 0) hour += 24;
             return { hour, minute, second };
         }
 
