@@ -152,10 +152,23 @@
             box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
         }
         .theme-title { font-size: 14px; color: #ddd; }
+
+        /* Animación de entrada */
+        @keyframes clockIntro {
+            0% { opacity: 0; transform: scale(0.94); }
+            60% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .clock-intro {
+            animation: clockIntro 800ms ease-out both;
+        }
+        .hand.animate-in {
+            transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
     </style>
 </head>
 <body>
-    <div class="clock">
+    <div class="clock clock-intro">
         <div class="hand hour" id="hour"></div>
         <div class="hand minute" id="minute"></div>
         <div class="hand second" id="second"></div>
@@ -327,12 +340,48 @@
         // Aplicar tema por defecto
         applyTheme('cian');
 
-        // Construimos el dial y actualizamos cada segundo
+        // Construimos el dial y animación de entrada
         createDial();
         updateZoneLabel();
-        // Actualizamos cada segundo
-        setInterval(updateClock, 1000);
-        updateClock();
+
+        function playIntroAnimation() {
+            const hEl = document.getElementById('hour');
+            const mEl = document.getElementById('minute');
+            const sEl = document.getElementById('second');
+
+            // Estado inicial de manos
+            hEl.style.transform = 'translateX(-50%) rotate(0deg)';
+            mEl.style.transform = 'translateX(-50%) rotate(0deg)';
+            sEl.style.transform = 'translateX(-50%) rotate(0deg)';
+            hEl.classList.add('animate-in');
+            mEl.classList.add('animate-in');
+            sEl.classList.add('animate-in');
+
+            // Tras un pequeño delay, llevamos a la hora real con transición
+            setTimeout(() => {
+                const { hour, minute, second } = getTimeForZone(zones[zoneIndex]);
+                const hourDeg = (hour % 12) * 30 + (minute / 2);
+                const minuteDeg = (minute * 6);
+                const secondDeg = (second * 6);
+                hEl.style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+                mEl.style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
+                sEl.style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
+                // Hora digital
+                document.getElementById('digital-time').textContent = `${format2(hour)}:${format2(minute)}:${format2(second)}`;
+            }, 60);
+
+            // Al terminar la transición, quitamos la clase y comenzamos actualización normal
+            setTimeout(() => {
+                hEl.classList.remove('animate-in');
+                mEl.classList.remove('animate-in');
+                sEl.classList.remove('animate-in');
+                // Actualizamos cada segundo
+                setInterval(updateClock, 1000);
+                updateClock();
+            }, 1100);
+        }
+
+        playIntroAnimation();
     </script>
 </body>
 </html>
